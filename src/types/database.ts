@@ -1,6 +1,6 @@
 // Supabase の型定義
 // 本来は `supabase gen types typescript` で自動生成する。
-// PR #1 では最小限の手書き型を用意し、認証実装時に自動生成に切り替える。
+// 手書き型: GenericTable の制約を満たすため各テーブルに Relationships: [] が必要。
 
 export type Database = {
   public: {
@@ -26,6 +26,7 @@ export type Database = {
           display_name?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       user_settings: {
         Row: {
@@ -47,6 +48,7 @@ export type Database = {
           max_monitors?: number;
           min_interval_hours?: number;
         };
+        Relationships: [];
       };
       monitors: {
         Row: {
@@ -93,6 +95,7 @@ export type Database = {
           robots_txt_status?: "allowed" | "disallowed" | "unknown" | null;
           retry_count?: number;
         };
+        Relationships: [];
       };
       monitor_snapshots: {
         Row: {
@@ -121,6 +124,7 @@ export type Database = {
           last_modified?: string | null;
         };
         Update: Record<string, never>;
+        Relationships: [];
       };
       change_events: {
         Row: {
@@ -146,6 +150,7 @@ export type Database = {
         Update: {
           is_read?: boolean;
         };
+        Relationships: [];
       };
       check_runs: {
         Row: {
@@ -176,6 +181,7 @@ export type Database = {
           retry_count?: number;
         };
         Update: Record<string, never>;
+        Relationships: [];
       };
       notifications: {
         Row: {
@@ -198,6 +204,7 @@ export type Database = {
         Update: {
           is_read?: boolean;
         };
+        Relationships: [];
       };
       notification_deliveries: {
         Row: {
@@ -225,6 +232,7 @@ export type Database = {
           error_message?: string | null;
           sent_at?: string | null;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

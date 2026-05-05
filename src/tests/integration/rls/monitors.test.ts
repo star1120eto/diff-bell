@@ -64,22 +64,19 @@ describe("monitors テーブル RLS", () => {
   });
 
   it("user2 は user1 の monitor を UPDATE できない", async () => {
-    const { error, count } = await client2
-      .from("monitors")
-      .update({ name: "Hacked" })
-      .eq("id", monitorId);
+    const { error } = await client2.from("monitors").update({ name: "Hacked" }).eq("id", monitorId);
 
     expect(error).toBeNull();
-    expect(count).toBe(0);
+    // RLS により 0 行が変更される（エラーなし・名前は変わっていない）
+    const { data } = await client1.from("monitors").select("name").eq("id", monitorId).single();
+    expect(data!.name).not.toBe("Hacked");
   });
 
   it("user2 は user1 の monitor を DELETE できない", async () => {
-    const { error, count } = await client2.from("monitors").delete().eq("id", monitorId);
+    const { error } = await client2.from("monitors").delete().eq("id", monitorId);
 
     expect(error).toBeNull();
-    expect(count).toBe(0);
-
-    // monitor がまだ存在することを user1 で確認
+    // RLS により 0 行が削除される（monitor がまだ存在する）
     const { data } = await client1.from("monitors").select("*").eq("id", monitorId);
     expect(data).toHaveLength(1);
   });

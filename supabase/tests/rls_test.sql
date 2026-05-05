@@ -233,6 +233,7 @@ SELECT throws_ok(
       'Evil Monitor', 'https://evil.com', 'https://evil.com'
     )
   $$,
+  '42501',
   'user1: 他ユーザーの user_id で monitors を INSERT できない'
 );
 
@@ -305,15 +306,17 @@ SELECT lives_ok(
 
 -- ===== check_runs の RLS テスト =====
 -- check_runs の INSERT は service_role のみ（Edge Function）
+-- テストデータ挿入にはスーパーユーザー権限が必要
 
--- user1 は自分の check_runs を読める（READ のみ）
+RESET role; -- postgres（スーパーユーザー）に戻してデータ挿入
+
 INSERT INTO public.check_runs (
   monitor_id, user_id, status, checked_at
 ) VALUES (
   'b0000000-0000-0000-0000-000000000001'::uuid,
   'a0000000-0000-0000-0000-000000000001'::uuid,
   'ok', now()
-); -- service role として事前挿入
+);
 
 SET LOCAL role TO authenticated;
 SELECT set_config(

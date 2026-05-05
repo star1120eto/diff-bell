@@ -126,13 +126,19 @@ describe("notifications テーブル RLS", () => {
   });
 
   it("user2 は user1 の notification を UPDATE できない", async () => {
-    const { error, count } = await client2
+    const { error } = await client2
       .from("notifications")
       .update({ is_read: false })
       .eq("id", notificationId);
 
     expect(error).toBeNull();
-    expect(count).toBe(0);
+    // RLS により 0 行が変更される（前テストで true にした is_read はそのまま）
+    const { data } = await client1
+      .from("notifications")
+      .select("is_read")
+      .eq("id", notificationId)
+      .single();
+    expect(data!.is_read).toBe(true);
   });
 
   it("anon ユーザーは notifications にアクセスできない", async () => {

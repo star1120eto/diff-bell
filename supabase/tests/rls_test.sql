@@ -6,7 +6,7 @@
 
 BEGIN;
 
-SELECT plan(28);
+SELECT plan(24);
 
 -- ===== セットアップ =====
 -- テスト用ユーザーを auth.users に直接挿入する
@@ -234,6 +234,7 @@ SELECT throws_ok(
     )
   $$,
   '42501',
+  NULL,
   'user1: 他ユーザーの user_id で monitors を INSERT できない'
 );
 

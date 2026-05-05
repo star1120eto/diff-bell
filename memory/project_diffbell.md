@@ -13,6 +13,7 @@ Webサイト変化検出・通知サービス「DiffBell」を TDD で構築中�
 ## 完了済み
 
 ### PR #1: Infrastructure (2026-05-05)
+
 - supabase/migrations/20260505000000_initial_schema.sql（全8テーブル + RLS + トリガー）
 - supabase/tests/rls_test.sql（pgTAP 28テスト）
 - Docker / Dev Container / Makefile / supabase/config.toml

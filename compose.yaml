@@ -18,33 +18,8 @@ services:
     env_file:
       - path: .env
         required: false
-    depends_on:
-      - supabase-db
-    networks:
-      - diffbell
     command: pnpm dev --host
-
-  # Supabase Studio へのアクセスは supabase start が別途必要
-  # このサービスは DB が起動済みかのヘルスチェック用
-  supabase-db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports:
-      - "54322:5432"
-    networks:
-      - diffbell
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
 volumes:
   pnpm-store:
   node-modules:
-
-networks:
-  diffbell:
-    driver: bridge

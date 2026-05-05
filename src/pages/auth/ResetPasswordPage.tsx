@@ -20,6 +20,7 @@ export function ResetPasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { email: "" },
   });
 
   const onSubmit = async (values: ResetPasswordInput) => {

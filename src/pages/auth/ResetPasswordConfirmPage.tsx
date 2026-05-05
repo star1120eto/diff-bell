@@ -34,6 +34,7 @@ export function ResetPasswordConfirmPage() {
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordConfirmInput>({
     resolver: zodResolver(resetPasswordConfirmSchema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
   const onSubmit = async (values: ResetPasswordConfirmInput) => {

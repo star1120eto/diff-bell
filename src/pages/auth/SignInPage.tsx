@@ -25,6 +25,7 @@ export function SignInPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (values: SignInInput) => {

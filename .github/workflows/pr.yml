@@ -43,7 +43,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Unit tests
-        run: pnpm test:unit  # --passWithNoTests: インフラ PR はテスト0件でも OK
+        run: pnpm test:unit # --passWithNoTests: インフラ PR はテスト0件でも OK
 
       - name: Build
         run: pnpm build
@@ -71,11 +71,8 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase local
+      - name: Start Supabase local (マイグレーション適用を兼ねる)
         run: supabase start
-
-      - name: Run migration dry-run
-        run: supabase db push --dry-run
 
       - name: Run pgTAP RLS tests
         run: supabase test db

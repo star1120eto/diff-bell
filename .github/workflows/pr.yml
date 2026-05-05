@@ -71,11 +71,8 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase local
+      - name: Start Supabase local (マイグレーション適用を兼ねる)
         run: supabase start
-
-      - name: Run migration dry-run
-        run: supabase db push --dry-run
 
       - name: Run pgTAP RLS tests
         run: supabase test db

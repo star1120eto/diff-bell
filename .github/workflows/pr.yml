@@ -43,7 +43,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Unit tests
-        run: pnpm test:unit  # --passWithNoTests: インフラ PR はテスト0件でも OK
+        run: pnpm test:unit # --passWithNoTests: インフラ PR はテスト0件でも OK
 
       - name: Build
         run: pnpm build

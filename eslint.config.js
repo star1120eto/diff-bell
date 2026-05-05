@@ -23,4 +23,11 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
     },
   },
+  {
+    // Context ファイルは Provider コンポーネントと useXxx フックを同居させるのが慣例
+    files: ["src/contexts/**/*.tsx"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 );

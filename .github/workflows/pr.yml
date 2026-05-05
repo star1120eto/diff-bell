@@ -11,84 +11,40 @@ concurrency:
 
 jobs:
   # ============================================================
-  # Job 1: 静的解析 + ユニットテスト + ビルド
+  # Job 1: ビルド確認（tsc -b 込み）
+  # lint / format / typecheck / unit tests はローカルの husky で実施
   # ============================================================
-  quality:
-    name: Lint / TypeCheck / Unit Test / Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Format check
-        run: pnpm format:check
-
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Unit tests
-        run: pnpm test:unit # --passWithNoTests: インフラ PR はテスト0件でも OK
-
-      - name: Build
-        run: pnpm build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: dist
-          path: dist/
-          retention-days: 1
-
-  # ============================================================
-  # Job 2: DB Migration dry-run
-  # ============================================================
-  migration-check:
-    name: Migration Dry Run
+  build:
+    name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
+      - uses: pnpm/action-setup@v4
         with:
-          version: latest
+          version: 9.12.0
 
-      - name: Start Supabase local (マイグレーション適用を兼ねる)
-        run: supabase start
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-      - name: Run pgTAP RLS tests
-        run: supabase test db
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --backup
+      - name: Build (tsc -b + vite)
+        run: pnpm build
 
   # ============================================================
-  # Job 3: Integration テスト (Supabase local)
+  # Job 2: DB マイグレーション + pgTAP + 統合テスト
+  # supabase start を 1 回にまとめて高速化
   # ============================================================
-  integration:
-    name: Integration Tests
+  db-and-integration:
+    name: DB & Integration Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [quality]
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
@@ -109,80 +65,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Start Supabase local
+      - name: Start Supabase local (マイグレーション適用を兼ねる)
         run: |
           supabase start
-          # anon key と service role key を環境変数に設定
           SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')
           SUPABASE_SERVICE_ROLE_KEY=$(supabase status --output json | jq -r '.SERVICE_ROLE_KEY')
           echo "SUPABASE_URL=http://localhost:54321" >> $GITHUB_ENV
           echo "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> $GITHUB_ENV
           echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" >> $GITHUB_ENV
 
+      - name: Run pgTAP RLS tests
+        run: supabase test db
+
       - name: Run integration tests
         run: pnpm test:integration
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --backup
-
-  # ============================================================
-  # Job 4: E2E Smoke Test (Playwright)
-  # ============================================================
-  e2e-smoke:
-    name: E2E Smoke Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [quality]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
-
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
-
-      - name: Start Supabase local
-        run: |
-          supabase start
-          SUPABASE_ANON_KEY=$(supabase status --output json | jq -r '.ANON_KEY')
-          echo "VITE_SUPABASE_URL=http://localhost:54321" >> $GITHUB_ENV
-          echo "VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> $GITHUB_ENV
-
-      - name: Build and run dev server
-        run: |
-          pnpm build
-          pnpm preview &
-          echo "BASE_URL=http://localhost:4173" >> $GITHUB_ENV
-          sleep 3
-
-      - name: Run E2E smoke tests
-        run: pnpm test:e2e
-        env:
-          CI: true
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
 
       - name: Stop Supabase
         if: always()

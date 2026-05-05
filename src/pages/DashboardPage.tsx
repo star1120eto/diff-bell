@@ -1,15 +1,96 @@
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { MonitorCard } from "@/components/monitors/MonitorCard";
+import { EmptyState } from "@/components/monitors/EmptyState";
+import { MonitorFormModal } from "@/components/monitors/MonitorFormModal";
+import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
 import { signOut } from "@/lib/auth";
+import {
+  listMonitors,
+  createMonitor,
+  updateMonitor,
+  deleteMonitor,
+  toggleMonitor,
+  type Monitor,
+} from "@/lib/monitors";
+import type { MonitorCreateInput } from "@/schemas/monitor";
+
+const MAX_MONITORS = 20;
 
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
+  const [deletingMonitor, setDeletingMonitor] = useState<Monitor | null>(null);
+
+  const loadMonitors = useCallback(async () => {
+    const result = await listMonitors();
+    if (result.ok) {
+      setMonitors(result.data);
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadMonitors();
+  }, [loadMonitors]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/login", { replace: true });
+  };
+
+  const handleAdd = () => {
+    setEditingMonitor(null);
+    setShowForm(true);
+  };
+
+  const handleEdit = (monitor: Monitor) => {
+    setEditingMonitor(monitor);
+    setShowForm(true);
+  };
+
+  const handleFormSubmit = async (values: MonitorCreateInput) => {
+    if (editingMonitor) {
+      const result = await updateMonitor(editingMonitor.id, values);
+      if (!result.ok) throw new Error(result.error);
+    } else {
+      const result = await createMonitor(values);
+      if (!result.ok) throw new Error(result.error);
+    }
+    setShowForm(false);
+    setEditingMonitor(null);
+    await loadMonitors();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingMonitor) return;
+    const result = await deleteMonitor(deletingMonitor.id);
+    if (!result.ok) {
+      setError(result.error);
+    }
+    setDeletingMonitor(null);
+    await loadMonitors();
+  };
+
+  const handleToggle = async (monitor: Monitor) => {
+    const result = await toggleMonitor(monitor.id, !monitor.is_active);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setMonitors((prev) => prev.map((m) => (m.id === monitor.id ? result.data : m)));
   };
 
   return (
@@ -27,11 +108,71 @@ export function DashboardPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center">
-          <h2 className="text-lg font-semibold text-gray-700">ダッシュボード</h2>
-          <p className="mt-2 text-sm text-gray-500">監視URL管理機能は PR #3 で実装予定です</p>
+        {error && (
+          <Alert variant="error" className="mb-4">
+            {error}
+          </Alert>
+        )}
+
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">監視URL</h2>
+            <p className="text-sm text-gray-500">
+              {monitors.length} / {MAX_MONITORS} 件
+            </p>
+          </div>
+          {monitors.length > 0 && (
+            <Button onClick={handleAdd} disabled={monitors.length >= MAX_MONITORS} size="sm">
+              <svg className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              URLを追加
+            </Button>
+          )}
         </div>
+
+        {loading ? (
+          <div className="py-16 text-center text-sm text-gray-400">読み込み中…</div>
+        ) : monitors.length === 0 ? (
+          <EmptyState onAdd={handleAdd} />
+        ) : (
+          <div className="space-y-3">
+            {monitors.map((monitor) => (
+              <MonitorCard
+                key={monitor.id}
+                monitor={monitor}
+                onEdit={handleEdit}
+                onDelete={setDeletingMonitor}
+                onToggle={handleToggle}
+              />
+            ))}
+          </div>
+        )}
       </main>
+
+      {showForm && (
+        <MonitorFormModal
+          monitor={editingMonitor}
+          onSubmit={handleFormSubmit}
+          onClose={() => {
+            setShowForm(false);
+            setEditingMonitor(null);
+          }}
+        />
+      )}
+
+      {deletingMonitor && (
+        <DeleteConfirmModal
+          monitor={deletingMonitor}
+          onConfirm={handleDeleteConfirm}
+          onClose={() => setDeletingMonitor(null)}
+        />
+      )}
     </div>
   );
 }

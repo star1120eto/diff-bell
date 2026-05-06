@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { Monitor } from "@/lib/monitors";
 
 const STATUS_LABEL: Record<Monitor["last_status"], string> = {
@@ -24,12 +25,15 @@ const INTERVAL_LABEL: Record<number, string> = {
 
 type Props = {
   monitor: Monitor;
+  unreadCount: number;
   onEdit: (monitor: Monitor) => void;
   onDelete: (monitor: Monitor) => void;
   onToggle: (monitor: Monitor) => void;
 };
 
-export function MonitorCard({ monitor, onEdit, onDelete, onToggle }: Props) {
+export function MonitorCard({ monitor, unreadCount, onEdit, onDelete, onToggle }: Props) {
+  const navigate = useNavigate();
+
   return (
     <div
       className={`rounded-lg border bg-white p-4 transition-opacity ${monitor.is_active ? "" : "opacity-60"}`}
@@ -42,6 +46,11 @@ export function MonitorCard({ monitor, onEdit, onDelete, onToggle }: Props) {
             >
               {STATUS_LABEL[monitor.last_status]}
             </span>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                {unreadCount}件の未読変更
+              </span>
+            )}
             {!monitor.is_active && (
               <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                 停止中
@@ -63,9 +72,19 @@ export function MonitorCard({ monitor, onEdit, onDelete, onToggle }: Props) {
               ? `最終チェック: ${new Date(monitor.last_checked_at).toLocaleString("ja-JP")}`
               : "未チェック"}
           </p>
+          {monitor.last_status === "error" && monitor.last_error && (
+            <p className="mt-1 truncate text-xs text-red-500">{monitor.last_error}</p>
+          )}
         </div>
 
         <div className="flex shrink-0 gap-1">
+          <button
+            onClick={() => navigate(`/monitors/${monitor.id}/history`)}
+            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            title="変更履歴"
+          >
+            <HistoryIcon />
+          </button>
           <button
             onClick={() => onToggle(monitor)}
             className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -90,6 +109,19 @@ export function MonitorCard({ monitor, onEdit, onDelete, onToggle }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
   );
 }
 

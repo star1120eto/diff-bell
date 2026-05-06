@@ -36,6 +36,7 @@ export function SettingsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [testResult, setTestResult] = useState<TestNotificationResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
 
   const {
@@ -74,12 +75,13 @@ export function SettingsPage() {
   const handleTestNotification = async () => {
     setIsTesting(true);
     setTestResult(null);
+    setTestError(null);
     const webhookUrl = watch("slack_webhook_url");
     const result = await sendTestNotification(webhookUrl);
     if (result.ok) {
       setTestResult(result.data);
     } else {
-      setTestResult(null);
+      setTestError(result.error);
     }
     setIsTesting(false);
   };
@@ -181,7 +183,7 @@ export function SettingsPage() {
               設定すると変更検出時に Slack へ通知します。 Slack アプリの「Incoming Webhooks」から
               URL を取得してください。 空欄の場合は Slack 通知を送信しません。
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -192,6 +194,7 @@ export function SettingsPage() {
                 テスト送信
               </Button>
               {testResult && <TestResultBadges result={testResult} />}
+              {testError && <p className="text-xs text-red-500">{testError}</p>}
             </div>
           </div>
         </section>

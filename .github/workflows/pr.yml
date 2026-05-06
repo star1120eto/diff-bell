@@ -55,24 +55,25 @@ jobs:
       - name: Type check Edge Functions
         run: |
           deno check \
+            --config supabase/functions/deno.json \
             supabase/functions/_shared/url-checker.ts \
             supabase/functions/_shared/robots.ts \
             supabase/functions/_shared/supabase.ts \
             supabase/functions/_shared/email.ts \
+            supabase/functions/_shared/slack.ts \
             supabase/functions/check-single-monitor/index.ts \
             supabase/functions/check-due-monitors/index.ts \
             supabase/functions/send-notifications/index.ts \
             supabase/functions/cleanup-old-snapshots/index.ts
-        working-directory: ${{ github.workspace }}
         env:
           DENO_DIR: ${{ github.workspace }}/.deno-cache
 
       - name: Run Edge Function unit tests
         run: |
           deno test \
+            --config supabase/functions/deno.json \
             supabase/functions/_shared/url-checker.test.ts \
             supabase/functions/_shared/robots.test.ts
-        working-directory: ${{ github.workspace }}
         env:
           DENO_DIR: ${{ github.workspace }}/.deno-cache
 

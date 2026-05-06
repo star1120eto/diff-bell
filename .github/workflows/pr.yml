@@ -38,7 +38,47 @@ jobs:
         run: pnpm build
 
   # ============================================================
-  # Job 2: DB マイグレーション + pgTAP + 統合テスト
+  # Job 2: Edge Functions 型チェック + ユニットテスト (Deno)
+  # ============================================================
+  edge-functions:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type check Edge Functions
+        run: |
+          deno check \
+            --config supabase/functions/deno.json \
+            supabase/functions/_shared/url-checker.ts \
+            supabase/functions/_shared/robots.ts \
+            supabase/functions/_shared/supabase.ts \
+            supabase/functions/_shared/email.ts \
+            supabase/functions/_shared/slack.ts \
+            supabase/functions/check-single-monitor/index.ts \
+            supabase/functions/check-due-monitors/index.ts \
+            supabase/functions/send-notifications/index.ts \
+            supabase/functions/cleanup-old-snapshots/index.ts
+        env:
+          DENO_DIR: ${{ github.workspace }}/.deno-cache
+
+      - name: Run Edge Function unit tests
+        run: |
+          deno test \
+            --config supabase/functions/deno.json \
+            supabase/functions/_shared/url-checker.test.ts \
+            supabase/functions/_shared/robots.test.ts
+        env:
+          DENO_DIR: ${{ github.workspace }}/.deno-cache
+
+  # ============================================================
+  # Job 3: DB マイグレーション + pgTAP + 統合テスト
   # supabase start を 1 回にまとめて高速化
   # ============================================================
   db-and-integration:

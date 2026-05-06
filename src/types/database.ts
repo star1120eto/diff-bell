@@ -32,6 +32,7 @@ export type Database = {
         Row: {
           user_id: string;
           email_notifications_enabled: boolean;
+          slack_webhook_url: string | null;
           max_monitors: number;
           min_interval_hours: number;
           created_at: string;
@@ -40,11 +41,13 @@ export type Database = {
         Insert: {
           user_id: string;
           email_notifications_enabled?: boolean;
+          slack_webhook_url?: string | null;
           max_monitors?: number;
           min_interval_hours?: number;
         };
         Update: {
           email_notifications_enabled?: boolean;
+          slack_webhook_url?: string | null;
           max_monitors?: number;
           min_interval_hours?: number;
         };

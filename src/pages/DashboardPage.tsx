@@ -100,6 +100,9 @@ export function DashboardPage() {
           <h1 className="text-xl font-bold text-brand-600">DiffBell</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.email}</span>
+            <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+              設定
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               ログアウト
             </Button>

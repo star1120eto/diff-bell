@@ -6,6 +6,7 @@ import { SignInPage } from "@/pages/auth/SignInPage";
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 export default function App() {
   return (
@@ -24,6 +25,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

@@ -1,5 +1,6 @@
 import { createServiceClient, errorResponse, jsonResponse } from "../_shared/supabase.ts";
 import { sendChangeNotificationEmail } from "../_shared/email.ts";
+import { sendSlackNotification } from "../_shared/slack.ts";
 
 interface RequestBody {
   changeEventId?: string;
@@ -18,10 +19,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? "noreply@diffbell.app";
 
-  if (!resendApiKey) {
-    return errorResponse("RESEND_API_KEY not configured", 500);
-  }
-
   const db = createServiceClient();
 
   // 送信待ち通知を取得（changeEventId 指定があればフィルタ）
@@ -30,7 +27,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .select(
       `id, title, body, user_id, change_event_id,
        profiles!inner(email),
-       user_settings!inner(email_notifications_enabled)`,
+       user_settings!inner(email_notifications_enabled, slack_webhook_url)`,
     )
     .eq("is_read", false);
 
@@ -59,53 +56,88 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const profile = notif.profiles as unknown as { email: string } | null;
     const settings = notif.user_settings as unknown as {
       email_notifications_enabled: boolean;
+      slack_webhook_url: string | null;
     } | null;
 
-    if (!profile?.email || !settings?.email_notifications_enabled) continue;
+    const monitorName = notif.title.replace("変更検出: ", "");
+    const monitorUrl = notif.body.replace(" に変更が検出されました", "");
+    const detectedAt = new Date().toISOString();
 
-    // notification_delivery レコードを作成
-    const { data: delivery, error: deliveryErr } = await db
-      .from("notification_deliveries")
-      .insert({
-        notification_id: notif.id,
-        channel: "email",
-        status: "pending",
-      })
-      .select("id")
-      .single();
+    // メール通知
+    if (profile?.email && settings?.email_notifications_enabled && resendApiKey) {
+      const { data: delivery, error: deliveryErr } = await db
+        .from("notification_deliveries")
+        .insert({ notification_id: notif.id, channel: "email", status: "pending" })
+        .select("id")
+        .single();
 
-    if (deliveryErr || !delivery) {
-      console.error("delivery insert error:", deliveryErr);
-      failed++;
-      continue;
+      if (deliveryErr || !delivery) {
+        console.error("email delivery insert error:", deliveryErr);
+        failed++;
+      } else {
+        const result = await sendChangeNotificationEmail({
+          to: profile.email,
+          monitorName,
+          monitorUrl,
+          detectedAt,
+          resendApiKey,
+          fromEmail,
+        });
+
+        await db
+          .from("notification_deliveries")
+          .update({
+            status: result.ok ? "sent" : "failed",
+            provider_id: result.providerId ?? null,
+            error_message: result.error ?? null,
+            sent_at: result.ok ? new Date().toISOString() : null,
+          })
+          .eq("id", delivery.id);
+
+        if (result.ok) {
+          sent++;
+        } else {
+          console.error("Email failed:", result.error);
+          failed++;
+        }
+      }
     }
 
-    // メール送信
-    const emailResult = await sendChangeNotificationEmail({
-      to: profile.email,
-      monitorName: notif.title.replace("変更検出: ", ""),
-      monitorUrl: notif.body.replace(" に変更が検出されました", ""),
-      detectedAt: new Date().toISOString(),
-      resendApiKey,
-      fromEmail,
-    });
+    // Slack 通知
+    if (settings?.slack_webhook_url) {
+      const { data: delivery, error: deliveryErr } = await db
+        .from("notification_deliveries")
+        .insert({ notification_id: notif.id, channel: "slack", status: "pending" })
+        .select("id")
+        .single();
 
-    // delivery ステータス更新
-    await db
-      .from("notification_deliveries")
-      .update({
-        status: emailResult.ok ? "sent" : "failed",
-        provider_id: emailResult.providerId ?? null,
-        error_message: emailResult.error ?? null,
-        sent_at: emailResult.ok ? new Date().toISOString() : null,
-      })
-      .eq("id", delivery.id);
+      if (deliveryErr || !delivery) {
+        console.error("slack delivery insert error:", deliveryErr);
+        failed++;
+      } else {
+        const result = await sendSlackNotification(
+          settings.slack_webhook_url,
+          monitorName,
+          monitorUrl,
+          detectedAt,
+        );
 
-    if (emailResult.ok) {
-      sent++;
-    } else {
-      console.error("Email send failed:", emailResult.error);
-      failed++;
+        await db
+          .from("notification_deliveries")
+          .update({
+            status: result.ok ? "sent" : "failed",
+            error_message: result.error ?? null,
+            sent_at: result.ok ? new Date().toISOString() : null,
+          })
+          .eq("id", delivery.id);
+
+        if (result.ok) {
+          sent++;
+        } else {
+          console.error("Slack failed:", result.error);
+          failed++;
+        }
+      }
     }
   }
 

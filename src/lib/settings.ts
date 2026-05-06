@@ -25,7 +25,12 @@ export async function getSettings(): Promise<SettingsResult<UserSettings>> {
 export async function updateSettings(
   updates: Partial<UserSettings>,
 ): Promise<SettingsResult<void>> {
-  const { error } = await supabase.from("user_settings").update(updates);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  const { error } = await supabase.from("user_settings").update(updates).eq("user_id", user.id);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };
@@ -41,7 +46,12 @@ export async function getProfile(): Promise<SettingsResult<Profile>> {
 export async function updateProfile(
   updates: Pick<Profile, "display_name">,
 ): Promise<SettingsResult<void>> {
-  const { error } = await supabase.from("profiles").update(updates);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+
+  const { error } = await supabase.from("profiles").update(updates).eq("id", user.id);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };

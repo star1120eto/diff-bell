@@ -39,7 +39,12 @@ export function Button({ variant, size, loading, className, children, disabled, 
       {...props}
     >
       {loading && (
-        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        <span
+          className={clsx(
+            "mr-2 h-4 w-4 animate-spin rounded-full border-2 border-t-transparent",
+            variant === "primary" || !variant ? "border-white" : "border-gray-500",
+          )}
+        />
       )}
       {children}
     </button>

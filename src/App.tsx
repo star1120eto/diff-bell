@@ -7,6 +7,7 @@ import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { MonitorHistoryPage } from "@/pages/MonitorHistoryPage";
 
 export default function App() {
   return (
@@ -33,6 +34,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/monitors/:id/history"
+            element={
+              <ProtectedRoute>
+                <MonitorHistoryPage />
               </ProtectedRoute>
             }
           />

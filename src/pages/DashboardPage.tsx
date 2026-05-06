@@ -4,9 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { MonitorCard } from "@/components/monitors/MonitorCard";
+import { MonitorCardSkeleton } from "@/components/monitors/MonitorCardSkeleton";
 import { EmptyState } from "@/components/monitors/EmptyState";
 import { MonitorFormModal } from "@/components/monitors/MonitorFormModal";
 import { DeleteConfirmModal } from "@/components/monitors/DeleteConfirmModal";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { signOut } from "@/lib/auth";
 import {
   listMonitors,
@@ -16,6 +18,8 @@ import {
   toggleMonitor,
   type Monitor,
 } from "@/lib/monitors";
+import { getUnreadChangeEventCounts } from "@/lib/history";
+import { checkMonitorNow } from "@/lib/monitors";
 import type { MonitorCreateInput } from "@/schemas/monitor";
 
 const MAX_MONITORS = 20;
@@ -25,6 +29,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,11 +38,17 @@ export function DashboardPage() {
   const [deletingMonitor, setDeletingMonitor] = useState<Monitor | null>(null);
 
   const loadMonitors = useCallback(async () => {
-    const result = await listMonitors();
-    if (result.ok) {
-      setMonitors(result.data);
+    const [monitorsResult, countsResult] = await Promise.all([
+      listMonitors(),
+      getUnreadChangeEventCounts(),
+    ]);
+    if (monitorsResult.ok) {
+      setMonitors(monitorsResult.data);
     } else {
-      setError(result.error);
+      setError(monitorsResult.error);
+    }
+    if (countsResult.ok) {
+      setUnreadCounts(countsResult.data);
     }
     setLoading(false);
   }, []);
@@ -84,6 +95,14 @@ export function DashboardPage() {
     await loadMonitors();
   };
 
+  const handleCheck = async (monitor: Monitor) => {
+    const result = await checkMonitorNow(monitor.id);
+    if (!result.ok) {
+      setError(result.error);
+    }
+    await loadMonitors();
+  };
+
   const handleToggle = async (monitor: Monitor) => {
     const result = await toggleMonitor(monitor.id, !monitor.is_active);
     if (!result.ok) {
@@ -98,8 +117,9 @@ export function DashboardPage() {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <h1 className="text-xl font-bold text-brand-600">DiffBell</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">{user?.email}</span>
+            <NotificationBell />
             <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
               設定
             </Button>
@@ -140,7 +160,11 @@ export function DashboardPage() {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center text-sm text-gray-400">読み込み中…</div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <MonitorCardSkeleton key={i} />
+            ))}
+          </div>
         ) : monitors.length === 0 ? (
           <EmptyState onAdd={handleAdd} />
         ) : (
@@ -149,9 +173,11 @@ export function DashboardPage() {
               <MonitorCard
                 key={monitor.id}
                 monitor={monitor}
+                unreadCount={unreadCounts[monitor.id] ?? 0}
                 onEdit={handleEdit}
                 onDelete={setDeletingMonitor}
                 onToggle={handleToggle}
+                onCheck={handleCheck}
               />
             ))}
           </div>

@@ -1,5 +1,12 @@
 import { supabase } from "./supabase";
 
+export interface TestNotificationResult {
+  slack: "sent" | "failed" | "skipped";
+  email: "sent" | "failed" | "skipped";
+  slackError?: string;
+  emailError?: string;
+}
+
 export interface UserSettings {
   email_notifications_enabled: boolean;
   slack_webhook_url: string | null;
@@ -41,6 +48,17 @@ export async function getProfile(): Promise<SettingsResult<Profile>> {
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, data };
+}
+
+export async function sendTestNotification(
+  webhookUrl?: string,
+): Promise<SettingsResult<TestNotificationResult>> {
+  const { data, error } = await supabase.functions.invoke("send-test-notification", {
+    body: { webhookUrl: webhookUrl ?? "" },
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: data as TestNotificationResult };
 }
 
 export async function updateProfile(

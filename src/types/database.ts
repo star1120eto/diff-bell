@@ -213,7 +213,7 @@ export type Database = {
         Row: {
           id: string;
           notification_id: string;
-          channel: "email" | "in_app";
+          channel: "email" | "in_app" | "slack";
           status: "pending" | "sent" | "failed";
           provider_id: string | null;
           error_message: string | null;
@@ -223,7 +223,7 @@ export type Database = {
         Insert: {
           id?: string;
           notification_id: string;
-          channel: "email" | "in_app";
+          channel: "email" | "in_app" | "slack";
           status?: "pending" | "sent" | "failed";
           provider_id?: string | null;
           error_message?: string | null;

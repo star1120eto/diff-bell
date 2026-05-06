@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { FormField } from "@/components/ui/FormField";
-import { getSettings, getProfile, updateSettings, updateProfile } from "@/lib/settings";
+import {
+  getSettings,
+  getProfile,
+  updateSettings,
+  updateProfile,
+  sendTestNotification,
+  type TestNotificationResult,
+} from "@/lib/settings";
 
 const settingsSchema = z.object({
   display_name: z.string().max(50, "50文字以内で入力してください").optional(),
@@ -28,11 +35,14 @@ export function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [testResult, setTestResult] = useState<TestNotificationResult | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<SettingsInput>({
     resolver: zodResolver(settingsSchema),
@@ -60,6 +70,19 @@ export function SettingsPage() {
     }
     load();
   }, [reset]);
+
+  const handleTestNotification = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    const webhookUrl = watch("slack_webhook_url");
+    const result = await sendTestNotification(webhookUrl);
+    if (result.ok) {
+      setTestResult(result.data);
+    } else {
+      setTestResult(null);
+    }
+    setIsTesting(false);
+  };
 
   const onSubmit = async (values: SettingsInput) => {
     setSaveStatus("idle");
@@ -158,6 +181,18 @@ export function SettingsPage() {
               設定すると変更検出時に Slack へ通知します。 Slack アプリの「Incoming Webhooks」から
               URL を取得してください。 空欄の場合は Slack 通知を送信しません。
             </p>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                loading={isTesting}
+                onClick={handleTestNotification}
+              >
+                テスト送信
+              </Button>
+              {testResult && <TestResultBadges result={testResult} />}
+            </div>
           </div>
         </section>
 
@@ -176,6 +211,37 @@ export function SettingsPage() {
           {saveStatus === "error" && errorMessage && <Alert variant="error">{errorMessage}</Alert>}
         </div>
       </form>
+    </div>
+  );
+}
+
+const STATUS_COLOR = {
+  sent: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
+  skipped: "bg-gray-100 text-gray-500",
+} as const;
+
+const STATUS_LABEL = {
+  sent: "送信成功",
+  failed: "送信失敗",
+  skipped: "スキップ",
+} as const;
+
+function TestResultBadges({ result }: { result: TestNotificationResult }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[result.slack]}`}
+      >
+        Slack: {STATUS_LABEL[result.slack]}
+        {result.slackError && ` (${result.slackError})`}
+      </span>
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[result.email]}`}
+      >
+        メール: {STATUS_LABEL[result.email]}
+        {result.emailError && ` (${result.emailError})`}
+      </span>
     </div>
   );
 }

@@ -81,6 +81,18 @@ export async function deleteMonitor(id: string): Promise<MonitorResult> {
   return { ok: true, data: null };
 }
 
+export async function checkMonitorNow(
+  monitorId: string,
+): Promise<MonitorResult<{ status: string; hasChanged: boolean }>> {
+  const { data, error } = await supabase.functions.invoke("check-single-monitor", {
+    body: { monitorId },
+  });
+
+  if (error) return { ok: false, error: error.message };
+  if (data?.error) return { ok: false, error: data.error };
+  return { ok: true, data };
+}
+
 export async function toggleMonitor(
   id: string,
   isActive: boolean,

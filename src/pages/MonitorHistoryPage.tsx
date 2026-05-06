@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { listMonitors, type Monitor } from "@/lib/monitors";
-import { listChangeEvents, markChangeEventsRead, type ChangeEvent } from "@/lib/history";
+import {
+  listChangeEvents,
+  markChangeEventsRead,
+  fetchSnapshotContent,
+  type ChangeEvent,
+  type Snapshot,
+} from "@/lib/history";
+import { computeDiff, type DiffLine } from "@/utils/diff";
 
 export function MonitorHistoryPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +54,11 @@ export function MonitorHistoryPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-8">
         {loading ? (
-          <div className="py-16 text-center text-sm text-gray-400">読み込み中…</div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
         ) : events.length === 0 ? (
           <div className="py-16 text-center text-sm text-gray-400">変更履歴はまだありません</div>
         ) : (
@@ -62,6 +74,33 @@ export function MonitorHistoryPage() {
 }
 
 function ChangeEventCard({ event }: { event: ChangeEvent }) {
+  const [expanded, setExpanded] = useState(false);
+  const [afterSnapshot, setAfterSnapshot] = useState<Snapshot | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffLines, setDiffLines] = useState<DiffLine[] | null>(null);
+
+  const handleToggleDiff = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (diffLines !== null) return;
+
+    setDiffLoading(true);
+    const [beforeResult, afterResult] = await Promise.all([
+      event.before_snapshot_id ? fetchSnapshotContent(event.before_snapshot_id) : null,
+      fetchSnapshotContent(event.after_snapshot_id),
+    ]);
+    const before = beforeResult?.ok ? beforeResult.data : null;
+    const after = afterResult?.ok ? afterResult.data : null;
+    setAfterSnapshot(after);
+    if (before && after) {
+      setDiffLines(computeDiff(before.content, after.content));
+    }
+    setDiffLoading(false);
+  };
+
   return (
     <div className="rounded-lg border bg-white p-4">
       <div className="flex items-center justify-between gap-2">
@@ -82,10 +121,85 @@ function ChangeEventCard({ event }: { event: ChangeEvent }) {
             </span>
           )}
         </div>
-        <time className="shrink-0 text-xs text-gray-400">
-          {new Date(event.detected_at).toLocaleString("ja-JP")}
-        </time>
+        <div className="flex items-center gap-3">
+          <time className="text-xs text-gray-400">
+            {new Date(event.detected_at).toLocaleString("ja-JP")}
+          </time>
+          <button onClick={handleToggleDiff} className="text-xs text-brand-600 hover:underline">
+            {expanded ? "閉じる" : "差分を表示"}
+          </button>
+        </div>
       </div>
+
+      {expanded && (
+        <div className="mt-3">
+          {diffLoading ? (
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-5/6" />
+            </div>
+          ) : diffLines !== null ? (
+            <DiffView lines={diffLines} />
+          ) : !event.before_snapshot_id ? (
+            <p className="text-xs text-gray-400">初回チェックのため比較対象がありません</p>
+          ) : afterSnapshot ? (
+            <SingleSnapshotView snapshot={afterSnapshot} />
+          ) : (
+            <p className="text-xs text-gray-400">スナップショットを取得できませんでした</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiffView({ lines }: { lines: DiffLine[] }) {
+  if (lines.length === 0) {
+    return <p className="text-xs text-gray-400">差分なし</p>;
+  }
+
+  return (
+    <div className="overflow-auto rounded border bg-gray-50 p-2 font-mono text-xs">
+      {lines.map((line, i) => {
+        if (line.type === "collapse") {
+          return (
+            <div key={i} className="py-0.5 text-center text-gray-400">
+              … {line.count} 行変更なし …
+            </div>
+          );
+        }
+        return (
+          <div
+            key={i}
+            className={
+              line.type === "insert"
+                ? "bg-green-50 text-green-800"
+                : line.type === "delete"
+                  ? "bg-red-50 text-red-800"
+                  : "text-gray-600"
+            }
+          >
+            <span className="mr-2 select-none text-gray-300">
+              {line.type === "insert" ? "+" : line.type === "delete" ? "−" : " "}
+            </span>
+            {line.text}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SingleSnapshotView({ snapshot }: { snapshot: Snapshot }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs text-gray-400">
+        HTTP {snapshot.http_status} · {snapshot.content_length.toLocaleString()} bytes
+      </p>
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded border bg-gray-50 p-2 text-xs text-gray-700">
+        {snapshot.content}
+      </pre>
     </div>
   );
 }

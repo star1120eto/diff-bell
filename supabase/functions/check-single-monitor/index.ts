@@ -1,4 +1,9 @@
-import { createServiceClient, errorResponse, jsonResponse } from "../_shared/supabase.ts";
+import {
+  createServiceClient,
+  createUserClient,
+  errorResponse,
+  jsonResponse,
+} from "../_shared/supabase.ts";
 import { checkUrl } from "../_shared/url-checker.ts";
 import { fetchRobotsTxtStatus } from "../_shared/robots.ts";
 
@@ -8,6 +13,25 @@ interface RequestBody {
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") return errorResponse("Method Not Allowed", 405);
+
+  // JWT 検証: cron 経由（サービスキー）またはユーザー JWT を受け入れる
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "");
+
+  let callerUserId: string | null = null;
+  const isServiceCall = bearerToken === serviceKey;
+
+  if (!isServiceCall) {
+    if (!authHeader) return errorResponse("Unauthorized", 401);
+    const userClient = createUserClient(authHeader);
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+    if (userErr || !user) return errorResponse("Unauthorized", 401);
+    callerUserId = user.id;
+  }
 
   let body: RequestBody;
   try {
@@ -29,7 +53,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .single();
 
   if (monitorErr || !monitor) {
-    return errorResponse(`Monitor not found: ${monitorId}`, 404);
+    return errorResponse("Monitor not found", 404);
+  }
+
+  // ユーザー呼び出しの場合は所有権を検証
+  if (callerUserId && monitor.user_id !== callerUserId) {
+    return errorResponse("Forbidden", 403);
   }
 
   if (!monitor.is_active) {

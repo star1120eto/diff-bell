@@ -103,8 +103,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Slack 通知
-    if (settings?.slack_webhook_url) {
+    // Slack 通知（サーバーサイドで URL を再検証）
+    const slackUrl = settings?.slack_webhook_url ?? "";
+    if (slackUrl && isValidSlackWebhookUrl(slackUrl)) {
       const { data: delivery, error: deliveryErr } = await db
         .from("notification_deliveries")
         .insert({ notification_id: notif.id, channel: "slack", status: "pending" })
@@ -115,12 +116,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         console.error("slack delivery insert error:", deliveryErr);
         failed++;
       } else {
-        const result = await sendSlackNotification(
-          settings.slack_webhook_url,
-          monitorName,
-          monitorUrl,
-          detectedAt,
-        );
+        const result = await sendSlackNotification(slackUrl, monitorName, monitorUrl, detectedAt);
 
         await db
           .from("notification_deliveries")
@@ -143,3 +139,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   return jsonResponse({ sent, failed });
 });
+
+function isValidSlackWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === "hooks.slack.com";
+  } catch {
+    return false;
+  }
+}

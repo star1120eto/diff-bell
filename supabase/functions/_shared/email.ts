@@ -1,3 +1,12 @@
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface SendEmailParams {
   to: string;
   monitorName: string;
@@ -18,18 +27,22 @@ export async function sendChangeNotificationEmail(p: SendEmailParams): Promise<E
     timeZone: "Asia/Tokyo",
   });
 
+  const safeName = escapeHtml(p.monitorName);
+  const safeUrl = escapeHtml(p.monitorUrl);
+  const safeDate = escapeHtml(detectedDate);
+
   const html = `
 <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
   <h2 style="color:#333">🔔 ページ変更が検出されました</h2>
-  <p><strong>${p.monitorName}</strong> で変更が検出されました。</p>
+  <p><strong>${safeName}</strong> で変更が検出されました。</p>
   <table style="border-collapse:collapse;width:100%">
     <tr>
       <td style="padding:8px;color:#666;width:120px">対象URL</td>
-      <td style="padding:8px"><a href="${p.monitorUrl}">${p.monitorUrl}</a></td>
+      <td style="padding:8px"><a href="${safeUrl}">${safeUrl}</a></td>
     </tr>
     <tr>
       <td style="padding:8px;color:#666">検出日時</td>
-      <td style="padding:8px">${detectedDate}</td>
+      <td style="padding:8px">${safeDate}</td>
     </tr>
   </table>
   <p style="margin-top:24px">

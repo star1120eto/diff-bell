@@ -6,6 +6,13 @@ const PRIVATE_HOST_PATTERNS = [
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^169\.254\./,
   /\.local$/i,
+  // IPv6 loopback and private ranges
+  /^\[?::1\]?$/i,
+  /^\[?::ffff:/i,
+  /^\[?fc[0-9a-f][0-9a-f]:/i,
+  /^\[?fd[0-9a-f][0-9a-f]:/i,
+  /^\[?fe80:/i,
+  /^\[?0+\]?$/i,
 ];
 
 export function isPrivateHost(hostname: string): boolean {
@@ -71,7 +78,7 @@ export async function checkUrl(rawUrl: string): Promise<CheckResult> {
 
   const start = Date.now();
   try {
-    const res = await fetchWithTimeout(rawUrl, FETCH_TIMEOUT_MS, MAX_REDIRECTS);
+    const res = await fetchWithSsrfSafeRedirects(rawUrl, FETCH_TIMEOUT_MS, MAX_REDIRECTS);
     const durationMs = Date.now() - start;
 
     const contentType = res.headers.get("content-type") ?? "";
@@ -123,15 +130,44 @@ export async function checkUrl(rawUrl: string): Promise<CheckResult> {
   }
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number, maxRedirects: number) {
+// リダイレクト先を手動検証しながら追跡する（SSRF 対策）
+async function fetchWithSsrfSafeRedirects(
+  url: string,
+  timeoutMs: number,
+  maxRedirects: number,
+): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, {
-      signal: controller.signal,
-      redirect: maxRedirects > 0 ? "follow" : "manual",
-      headers: { "User-Agent": "DiffBell/1.0 (+https://diffbell.app)" },
-    });
+    let currentUrl = url;
+    let redirectsLeft = maxRedirects;
+
+    while (true) {
+      const res = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: { "User-Agent": "DiffBell/1.0 (+https://diffbell.app)" },
+      });
+
+      const isRedirect = res.status >= 300 && res.status < 400;
+      if (!isRedirect || redirectsLeft <= 0) return res;
+
+      const location = res.headers.get("location");
+      if (!location) return res;
+
+      // リダイレクト先を絶対 URL に解決
+      const nextUrl = new URL(location, currentUrl);
+
+      if (!["http:", "https:"].includes(nextUrl.protocol)) {
+        throw new Error(`Redirect to disallowed scheme: ${nextUrl.protocol}`);
+      }
+      if (isPrivateHost(nextUrl.hostname)) {
+        throw new Error(`Redirect to private host blocked: ${nextUrl.hostname}`);
+      }
+
+      currentUrl = nextUrl.toString();
+      redirectsLeft--;
+    }
   } finally {
     clearTimeout(timer);
   }

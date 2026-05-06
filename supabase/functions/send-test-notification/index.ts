@@ -48,9 +48,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const result: TestResult = { slack: "skipped", email: "skipped" };
   const now = new Date().toISOString();
 
-  // Slack テスト
+  // Slack テスト（hostname を正規 URL パースで検証）
   const webhookUrl = body.webhookUrl ?? "";
-  if (webhookUrl.startsWith("https://hooks.slack.com/")) {
+  let isValidWebhook = false;
+  try {
+    const parsed = new URL(webhookUrl);
+    isValidWebhook = parsed.protocol === "https:" && parsed.hostname === "hooks.slack.com";
+  } catch {
+    // invalid URL
+  }
+  if (isValidWebhook) {
     const slackResult = await sendSlackNotification(
       webhookUrl,
       "テスト監視",

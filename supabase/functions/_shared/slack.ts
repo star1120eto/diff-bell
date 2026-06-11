@@ -3,6 +3,10 @@ export interface SlackResult {
   error?: string;
 }
 
+export function isValidSlackWebhookUrl(url: string): boolean {
+  return url.startsWith("https://hooks.slack.com/") && url.length <= 500;
+}
+
 export async function sendSlackNotification(
   webhookUrl: string,
   monitorName: string,
@@ -39,6 +43,10 @@ export async function sendSlackNotification(
       },
     ],
   };
+
+  if (!isValidSlackWebhookUrl(webhookUrl)) {
+    return { ok: false, error: "Invalid Slack webhook URL" };
+  }
 
   const res = await fetch(webhookUrl, {
     method: "POST",

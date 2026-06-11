@@ -74,3 +74,15 @@ export async function updateProfile(
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: undefined };
 }
+
+export async function deleteAccount(): Promise<SettingsResult<void>> {
+  const { data, error } = await supabase.functions.invoke("delete-account", {
+    method: "POST",
+  });
+
+  if (error) return { ok: false, error: error.message };
+  if (data?.error) return { ok: false, error: data.error };
+
+  await supabase.auth.signOut();
+  return { ok: true, data: undefined };
+}

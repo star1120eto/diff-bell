@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { SignUpPage } from "@/pages/auth/SignUpPage";
@@ -8,6 +8,8 @@ import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage"
 import { DashboardPage } from "@/pages/DashboardPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { MonitorHistoryPage } from "@/pages/MonitorHistoryPage";
+import { LandingPage } from "@/pages/LandingPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 
 export default function App() {
   return (
@@ -15,6 +17,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           {/* 公開ルート */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/login" element={<SignInPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -46,9 +49,8 @@ export default function App() {
             }
           />
 
-          {/* デフォルトリダイレクト */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* 404 */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

@@ -9,6 +9,17 @@ interface RequestBody {
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") return errorResponse("Method Not Allowed", 405);
 
+  // サービスロールキーによる認証（内部からのみ呼び出し可能）
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey) {
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+    return errorResponse("Server misconfiguration", 500);
+  }
+  const auth = req.headers.get("authorization");
+  if (auth !== `Bearer ${serviceKey}`) {
+    return errorResponse("Unauthorized", 401);
+  }
+
   let body: RequestBody;
   try {
     body = await req.json();

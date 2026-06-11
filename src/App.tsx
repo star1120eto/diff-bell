@@ -8,6 +8,7 @@ import { ResetPasswordConfirmPage } from "@/pages/auth/ResetPasswordConfirmPage"
 import { DashboardPage } from "@/pages/DashboardPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { MonitorHistoryPage } from "@/pages/MonitorHistoryPage";
+import { BillingPage } from "@/pages/BillingPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <MonitorHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
               </ProtectedRoute>
             }
           />

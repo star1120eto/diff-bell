@@ -12,6 +12,7 @@ type Props = {
   monitor?: Monitor | null;
   onSubmit: (values: MonitorCreateInput) => Promise<void>;
   onClose: () => void;
+  minIntervalHours?: number;
 };
 
 const INTERVAL_OPTIONS = [
@@ -22,7 +23,7 @@ const INTERVAL_OPTIONS = [
   { value: 24, label: "24時間" },
 ] as const;
 
-export function MonitorFormModal({ monitor, onSubmit, onClose }: Props) {
+export function MonitorFormModal({ monitor, onSubmit, onClose, minIntervalHours = 1 }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const isEdit = !!monitor;
 
@@ -118,7 +119,7 @@ export function MonitorFormModal({ monitor, onSubmit, onClose }: Props) {
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               {...register("interval_hours", { valueAsNumber: true })}
             >
-              {INTERVAL_OPTIONS.map((opt) => (
+              {INTERVAL_OPTIONS.filter((opt) => opt.value >= minIntervalHours).map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

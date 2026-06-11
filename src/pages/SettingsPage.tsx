@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -144,6 +144,18 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl py-8">
       <h1 className="mb-6 text-2xl font-bold text-gray-900">設定</h1>
+
+      {/* プラン・お支払いへのリンク */}
+      <Link
+        to="/billing"
+        className="mb-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:bg-gray-50"
+      >
+        <div>
+          <p className="text-sm font-semibold text-gray-900">プラン・お支払い</p>
+          <p className="text-xs text-gray-500">現在のプランの確認とアップグレード</p>
+        </div>
+        <span className="text-gray-400">→</span>
+      </Link>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* プロフィール */}

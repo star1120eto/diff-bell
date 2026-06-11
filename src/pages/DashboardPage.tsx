@@ -20,9 +20,8 @@ import {
 } from "@/lib/monitors";
 import { getUnreadChangeEventCounts } from "@/lib/history";
 import { checkMonitorNow } from "@/lib/monitors";
+import { getUserPlan, type UserPlan } from "@/lib/billing";
 import type { MonitorCreateInput } from "@/schemas/monitor";
-
-const MAX_MONITORS = 20;
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -30,6 +29,7 @@ export function DashboardPage() {
 
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,9 +38,10 @@ export function DashboardPage() {
   const [deletingMonitor, setDeletingMonitor] = useState<Monitor | null>(null);
 
   const loadMonitors = useCallback(async () => {
-    const [monitorsResult, countsResult] = await Promise.all([
+    const [monitorsResult, countsResult, planResult] = await Promise.all([
       listMonitors(),
       getUnreadChangeEventCounts(),
+      getUserPlan(),
     ]);
     if (monitorsResult.ok) {
       setMonitors(monitorsResult.data);
@@ -49,6 +50,9 @@ export function DashboardPage() {
     }
     if (countsResult.ok) {
       setUnreadCounts(countsResult.data);
+    }
+    if (planResult.ok) {
+      setUserPlan(planResult.data);
     }
     setLoading(false);
   }, []);
@@ -137,15 +141,34 @@ export function DashboardPage() {
           </Alert>
         )}
 
+        {/* アップグレード促進バナー */}
+        {userPlan && userPlan.plan === "free" && monitors.length >= userPlan.maxMonitors && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
+            <p className="text-sm text-brand-700">
+              無料プランの上限（{userPlan.maxMonitors}件）に達しました。
+            </p>
+            <button
+              onClick={() => navigate("/billing")}
+              className="ml-4 shrink-0 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+            >
+              Proへアップグレード
+            </button>
+          </div>
+        )}
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">監視URL</h2>
             <p className="text-sm text-gray-500">
-              {monitors.length} / {MAX_MONITORS} 件
+              {monitors.length} / {userPlan?.maxMonitors ?? "..."} 件
             </p>
           </div>
           {monitors.length > 0 && (
-            <Button onClick={handleAdd} disabled={monitors.length >= MAX_MONITORS} size="sm">
+            <Button
+              onClick={handleAdd}
+              disabled={!!userPlan && monitors.length >= userPlan.maxMonitors}
+              size="sm"
+            >
               <svg className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -192,6 +215,7 @@ export function DashboardPage() {
             setShowForm(false);
             setEditingMonitor(null);
           }}
+          minIntervalHours={userPlan?.minIntervalHours ?? 6}
         />
       )}
 

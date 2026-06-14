@@ -11,16 +11,27 @@ export interface UserPlan {
 
 export type BillingResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
+type SubscriptionRow = {
+  plan: string;
+  status: string;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
+};
+
 export async function getUserPlan(): Promise<BillingResult<UserPlan>> {
   const [subResult, settingsResult] = await Promise.all([
-    supabase.from("subscriptions").select("plan, status, current_period_end, stripe_customer_id").single(),
+    supabase
+      .from("subscriptions" as never)
+      .select("plan, status, current_period_end, stripe_customer_id")
+      .single(),
     supabase.from("user_settings").select("max_monitors, min_interval_hours").single(),
   ]);
 
-  if (subResult.error) return { ok: false, error: subResult.error.message };
+  if (subResult.error)
+    return { ok: false, error: (subResult.error as { message: string }).message };
   if (settingsResult.error) return { ok: false, error: settingsResult.error.message };
 
-  const sub = subResult.data;
+  const sub = subResult.data as SubscriptionRow;
   const settings = settingsResult.data;
 
   return {

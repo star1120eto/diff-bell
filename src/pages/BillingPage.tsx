@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { getUserPlan, createCheckoutSession, createPortalSession, type UserPlan } from "@/lib/billing";
+import {
+  getUserPlan,
+  createCheckoutSession,
+  createPortalSession,
+  type UserPlan,
+} from "@/lib/billing";
 
 export function BillingPage() {
   const navigate = useNavigate();
@@ -64,7 +69,8 @@ export function BillingPage() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         {success && (
           <Alert variant="success" className="mb-6">
-            🎉 Pro プランへのアップグレードが完了しました！最短1時間ごとの監視と最大20サイトが利用可能です。
+            🎉 Pro
+            プランへのアップグレードが完了しました！最短1時間ごとの監視と最大20サイトが利用可能です。
           </Alert>
         )}
         {canceled && (
@@ -72,7 +78,11 @@ export function BillingPage() {
             お支払いをキャンセルしました。引き続き無料プランをご利用いただけます。
           </Alert>
         )}
-        {error && <Alert variant="error" className="mb-6">{error}</Alert>}
+        {error && (
+          <Alert variant="error" className="mb-6">
+            {error}
+          </Alert>
+        )}
 
         {loading ? (
           <div className="flex h-48 items-center justify-center">
@@ -110,7 +120,12 @@ export function BillingPage() {
                   )}
                 </div>
                 {plan.plan === "pro" ? (
-                  <Button variant="outline" size="sm" loading={actionLoading} onClick={handleManage}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={actionLoading}
+                    onClick={handleManage}
+                  >
                     プランを管理
                   </Button>
                 ) : (
@@ -176,9 +191,7 @@ export function BillingPage() {
 function PlanBadge({ plan }: { plan: "free" | "pro" }) {
   if (plan === "pro") {
     return (
-      <span className="rounded-full bg-brand-600 px-3 py-1 text-sm font-bold text-white">
-        Pro
-      </span>
+      <span className="rounded-full bg-brand-600 px-3 py-1 text-sm font-bold text-white">Pro</span>
     );
   }
   return (

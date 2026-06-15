@@ -34,6 +34,7 @@ CREATE POLICY "subscriptions: own record read"
 
 GRANT SELECT ON public.subscriptions TO anon;
 GRANT SELECT ON public.subscriptions TO authenticated;
+GRANT ALL ON public.subscriptions TO service_role;
 
 -- ===== 既存ユーザーを Free プランで登録 =====
 

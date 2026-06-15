@@ -294,7 +294,12 @@ CREATE TRIGGER on_auth_user_created
 -- of throwing "permission denied".
 -- ============================================================
 
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+-- service_role: full access to all tables (bypasses RLS, but still
+-- requires table-level privileges in non-superuser Supabase local setup)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- anon: SELECT only — RLS has no matching policy so all rows are
 -- filtered out, but the query itself does not error.

@@ -1,6 +1,6 @@
 import { createServiceClient, errorResponse, jsonResponse } from "../_shared/supabase.ts";
 import { sendChangeNotificationEmail } from "../_shared/email.ts";
-import { sendSlackNotification } from "../_shared/slack.ts";
+import { sendSlackNotification, isValidSlackWebhookUrl } from "../_shared/slack.ts";
 
 interface RequestBody {
   changeEventId?: string;
@@ -8,6 +8,17 @@ interface RequestBody {
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") return errorResponse("Method Not Allowed", 405);
+
+  // サービスロールキーによる認証（内部からのみ呼び出し可能）
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey) {
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+    return errorResponse("Server misconfiguration", 500);
+  }
+  const auth = req.headers.get("authorization");
+  if (auth !== `Bearer ${serviceKey}`) {
+    return errorResponse("Unauthorized", 401);
+  }
 
   let body: RequestBody = {};
   try {
@@ -103,8 +114,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Slack 通知
-    if (settings?.slack_webhook_url) {
+    // Slack 通知（URL 検証済みのもののみ送信）
+    if (settings?.slack_webhook_url && isValidSlackWebhookUrl(settings.slack_webhook_url)) {
       const { data: delivery, error: deliveryErr } = await db
         .from("notification_deliveries")
         .insert({ notification_id: notif.id, channel: "slack", status: "pending" })

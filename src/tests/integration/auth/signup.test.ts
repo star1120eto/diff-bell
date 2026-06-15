@@ -65,8 +65,8 @@ describe("サインアップフロー", () => {
     expect(error).toBeNull();
     expect(settings).not.toBeNull();
     expect(settings?.email_notifications_enabled).toBe(true);
-    expect(settings?.max_monitors).toBe(20);
-    expect(settings?.min_interval_hours).toBe(1);
+    expect(settings?.max_monitors).toBe(3);
+    expect(settings?.min_interval_hours).toBe(6);
   });
 
   it("同じメールアドレスで二重サインアップするとエラー", async () => {

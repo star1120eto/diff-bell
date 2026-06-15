@@ -7,8 +7,6 @@ export type Monitor = Database["public"]["Tables"]["monitors"]["Row"];
 
 export type MonitorResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
 
-const MAX_MONITORS = 20;
-
 export async function listMonitors(): Promise<MonitorResult<Monitor[]>> {
   const { data, error } = await supabase
     .from("monitors")
@@ -25,10 +23,19 @@ export async function createMonitor(input: MonitorCreateInput): Promise<MonitorR
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "ログインが必要です" };
 
-  // 上限チェック
+  // プランの上限をDBから取得
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("max_monitors")
+    .single();
+  const maxMonitors = settings?.max_monitors ?? 3;
+
   const { count } = await supabase.from("monitors").select("id", { count: "exact", head: true });
-  if ((count ?? 0) >= MAX_MONITORS) {
-    return { ok: false, error: `監視URLは最大${MAX_MONITORS}件までです` };
+  if ((count ?? 0) >= maxMonitors) {
+    return {
+      ok: false,
+      error: `プランの上限（${maxMonitors}件）に達しています。Proプランへアップグレードすると最大20件まで登録できます。`,
+    };
   }
 
   const normalized = normalizeUrl(input.url);

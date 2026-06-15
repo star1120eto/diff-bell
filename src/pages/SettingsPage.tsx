@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import {
   updateSettings,
   updateProfile,
   sendTestNotification,
+  deleteAccount,
   type TestNotificationResult,
 } from "@/lib/settings";
 
@@ -31,6 +33,7 @@ const settingsSchema = z.object({
 type SettingsInput = z.infer<typeof settingsSchema>;
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState<string>("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -38,6 +41,10 @@ export function SettingsPage() {
   const [testResult, setTestResult] = useState<TestNotificationResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
     register,
@@ -86,6 +93,19 @@ export function SettingsPage() {
     setIsTesting(false);
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "削除") return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    const result = await deleteAccount();
+    if (result.ok) {
+      navigate("/", { replace: true });
+    } else {
+      setDeleteError(result.error);
+      setIsDeleting(false);
+    }
+  };
+
   const onSubmit = async (values: SettingsInput) => {
     setSaveStatus("idle");
     setErrorMessage(null);
@@ -124,6 +144,18 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl py-8">
       <h1 className="mb-6 text-2xl font-bold text-gray-900">設定</h1>
+
+      {/* プラン・お支払いへのリンク */}
+      <Link
+        to="/billing"
+        className="mb-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm transition hover:bg-gray-50"
+      >
+        <div>
+          <p className="text-sm font-semibold text-gray-900">プラン・お支払い</p>
+          <p className="text-xs text-gray-500">現在のプランの確認とアップグレード</p>
+        </div>
+        <span className="text-gray-400">→</span>
+      </Link>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* プロフィール */}
@@ -214,6 +246,63 @@ export function SettingsPage() {
           {saveStatus === "error" && errorMessage && <Alert variant="error">{errorMessage}</Alert>}
         </div>
       </form>
+
+      {/* アカウント削除 */}
+      <section className="mt-8 rounded-lg border border-red-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-2 text-lg font-semibold text-red-700">アカウントを削除</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          アカウントを削除すると、すべての監視設定・履歴・通知データが完全に削除されます。この操作は取り消せません。
+        </p>
+        {!showDeleteConfirm ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="border-red-300 text-red-600 hover:bg-red-50"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            アカウントを削除する
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">
+              確認のため、テキストボックスに{" "}
+              <span className="rounded bg-gray-100 px-1 font-mono font-bold">削除</span>{" "}
+              と入力してください。
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="削除"
+              className="block rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
+            />
+            {deleteError && <Alert variant="error">{deleteError}</Alert>}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-red-400 bg-red-600 text-white hover:bg-red-700"
+                disabled={deleteConfirmText !== "削除" || isDeleting}
+                loading={isDeleting}
+                onClick={handleDeleteAccount}
+              >
+                完全に削除する
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText("");
+                  setDeleteError(null);
+                }}
+              >
+                キャンセル
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -5,13 +5,15 @@ const DEFAULT_KEEP_COUNT = 5;
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") return errorResponse("Method Not Allowed", 405);
 
-  // CRON_SECRET による認証
+  // CRON_SECRET による認証（必須）
   const cronSecret = Deno.env.get("CRON_SECRET");
-  if (cronSecret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return errorResponse("Unauthorized", 401);
-    }
+  if (!cronSecret) {
+    console.error("CRON_SECRET is not configured");
+    return errorResponse("Server misconfiguration", 500);
+  }
+  const auth = req.headers.get("authorization");
+  if (auth !== `Bearer ${cronSecret}`) {
+    return errorResponse("Unauthorized", 401);
   }
 
   let keepCount = DEFAULT_KEEP_COUNT;

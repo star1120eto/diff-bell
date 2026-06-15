@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /monitors/
+
+Sitemap: https://diffbell.app/sitemap.xml

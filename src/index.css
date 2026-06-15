@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 日本語テキストの行末処理を最適化 */
+  :lang(ja),
+  body {
+    word-break: auto-phrase;
+    line-break: strict;
+  }
+}

@@ -32,6 +32,9 @@ CREATE POLICY "subscriptions: own record read"
   FOR SELECT
   USING (auth.uid() = user_id);
 
+GRANT SELECT ON public.subscriptions TO anon;
+GRANT SELECT ON public.subscriptions TO authenticated;
+
 -- ===== 既存ユーザーを Free プランで登録 =====
 
 INSERT INTO public.subscriptions (user_id, plan, status)

@@ -288,6 +288,35 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
+-- Role Grants
+-- RLS policies control what rows are visible; grants here give
+-- the roles the base privilege so queries return 0 rows instead
+-- of throwing "permission denied".
+-- ============================================================
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+-- anon: SELECT only — RLS has no matching policy so all rows are
+-- filtered out, but the query itself does not error.
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT ON public.user_settings TO anon;
+GRANT SELECT ON public.monitors TO anon;
+GRANT SELECT ON public.monitor_snapshots TO anon;
+GRANT SELECT ON public.change_events TO anon;
+GRANT SELECT ON public.check_runs TO anon;
+GRANT SELECT ON public.notifications TO anon;
+-- notification_deliveries: intentionally no grant (service_role only)
+
+-- authenticated: full CRUD controlled entirely by RLS policies above
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, UPDATE ON public.user_settings TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.monitors TO authenticated;
+GRANT SELECT ON public.monitor_snapshots TO authenticated;
+GRANT SELECT, UPDATE ON public.change_events TO authenticated;
+GRANT SELECT ON public.check_runs TO authenticated;
+GRANT SELECT, UPDATE ON public.notifications TO authenticated;
+
+-- ============================================================
 -- Retention Helper: 古いスナップショットを削除する関数
 -- cleanup-old-snapshots Edge Function から呼ばれる
 -- ============================================================
